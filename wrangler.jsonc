@@ -1,0 +1,29 @@
+/**
+ * Cloudflare Workers 設定 (OpenNext for Cloudflare)
+ * https://developers.cloudflare.com/workers/wrangler/configuration/
+ *
+ * 環境変数はすべて Cloudflare ダッシュボードで管理する。
+ *   Workers & Pages → gauge-manager → Settings → Variables and Secrets
+ *
+ * - Production 環境: main ブランチがデプロイされる本番 Worker
+ * - Preview 環境: それ以外のブランチが自動的にデプロイされるプレビュー Worker
+ *
+ * NEXT_PUBLIC_* はビルド時に JS にインライン化されるため、
+ * Cloudflare Workers Builds の「Build variables and secrets」に登録すること。
+ * ランタイムのみで使う値（SUPABASE_SERVICE_ROLE_KEY 等）は
+ * 「Variables and Secrets」(Secret) に登録すること。
+ */
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "gauge-manager-dev",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2025-03-25",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "binding": "ASSETS",
+    "directory": ".open-next/assets"
+  },
+  "observability": {
+    "enabled": true
+  }
+}

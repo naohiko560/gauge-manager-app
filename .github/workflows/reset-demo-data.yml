@@ -1,0 +1,16 @@
+name: Reset Demo Data
+
+on:
+  schedule:
+    # 毎日 15:00 UTC = 翌 0:00 JST
+    - cron: '0 15 * * *'
+  workflow_dispatch: # 手動実行も可能
+
+jobs:
+  reset:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call reset_demo_data()
+        run: psql "$DATABASE_URL" -c "SELECT reset_demo_data();"
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
