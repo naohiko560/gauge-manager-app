@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Table, TableBody, TableCell, TableHeader, TableRow } from '@/components/ui/table'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ChevronLeft, Plus, Trash2, CalendarDays, ChevronDown } from 'lucide-react'
 import { SortableHead } from '@/components/ui/SortableHead'
@@ -56,6 +56,7 @@ export function InstrumentDetailClient({ nameId, modelId }: Props) {
   const realModelId = modelId === 'none' ? null : modelId
 
   const [instruments, setInstruments] = useState<Instrument[]>([])
+  const [latestNotes, setLatestNotes] = useState<Record<string, string>>({})
   const [groupCounts, setGroupCounts] = useState<GroupCounts>({ total: 0, warehouse: 0, field: 0, repair: 0 })
   const [groupName, setGroupName] = useState('')
   const [groupModel, setGroupModel] = useState<string | null>(null)
@@ -93,7 +94,6 @@ export function InstrumentDetailClient({ nameId, modelId }: Props) {
   const [addSaving, setAddSaving] = useState(false)
   const [addError, setAddError] = useState('')
 
-  const dateInputRef = useRef<HTMLInputElement>(null)
   const addDateInputRef = useRef<HTMLInputElement>(null)
 
   function countsByLocationType(rows: { location_id: string | null; storage_location: string | null; locations?: unknown }[]): GroupCounts {
@@ -108,6 +108,23 @@ export function InstrumentDetailClient({ nameId, modelId }: Props) {
       else if (g.storage_location === '修理中') counts.repair++
     }
     return counts
+  }
+
+  async function fetchLatestNotes(instrumentIds: string[]) {
+    if (instrumentIds.length === 0) return
+    const supabase = createClient()
+    const { data } = await supabase
+      .from('stock_transactions')
+      .select('instrument_id, note, transacted_at, created_at')
+      .in('instrument_id', instrumentIds)
+      .order('transacted_at', { ascending: false })
+      .order('created_at', { ascending: false })
+    if (!data) return
+    const notes: Record<string, string> = {}
+    for (const row of data) {
+      if (!(row.instrument_id in notes) && row.note) notes[row.instrument_id] = row.note
+    }
+    setLatestNotes(notes)
   }
 
   async function fetchGroupCounts() {
@@ -154,6 +171,8 @@ export function InstrumentDetailClient({ nameId, modelId }: Props) {
         .eq('name_id', nameId)
         .neq('status', 'disposed')
       if (allInGroup) setGroupCounts(countsByLocationType(allInGroup as any))
+
+      await fetchLatestNotes(list.map((i) => i.id))
 
       if (session?.user?.email) {
         const { data: user } = await supabase
@@ -290,6 +309,7 @@ export function InstrumentDetailClient({ nameId, modelId }: Props) {
           : i
       )
     )
+    if (note) setLatestNotes((prev) => ({ ...prev, [selectedInst.id]: note }))
     await fetchGroupCounts()
     setSaving(false)
     setModalOpen(false)
@@ -463,12 +483,13 @@ export function InstrumentDetailClient({ nameId, modelId }: Props) {
                 <SortableHead sortKey="location" currentKey={sortKey} currentDir={sortDir} onSort={handleSort}>所在</SortableHead>
                 <SortableHead sortKey="management_code" currentKey={sortKey} currentDir={sortDir} onSort={handleSort}>登録番号</SortableHead>
                 <SortableHead sortKey="serial_number" currentKey={sortKey} currentDir={sortDir} onSort={handleSort}>シリアルNo</SortableHead>
+                <TableHead>最新メモ</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {instruments.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={3} className="text-center py-8 text-gray-500">
+                  <TableCell colSpan={4} className="text-center py-8 text-gray-500">
                     該当する測定器がありません
                   </TableCell>
                 </TableRow>
@@ -486,6 +507,7 @@ export function InstrumentDetailClient({ nameId, modelId }: Props) {
                     </TableCell>
                     <TableCell className="text-sm text-gray-600">{inst.management_code || '-'}</TableCell>
                     <TableCell className="text-sm text-gray-600">{inst.serial_number || '-'}</TableCell>
+                    <TableCell className="text-sm text-gray-500 truncate max-w-xs">{latestNotes[inst.id] || '-'}</TableCell>
                   </TableRow>
                 ))
               )}
@@ -569,24 +591,12 @@ export function InstrumentDetailClient({ nameId, modelId }: Props) {
               <Input value={serialNumber} readOnly className="bg-gray-50 text-gray-500" />
             </div>
             <div className="space-y-1">
-              <Label>日付 <span className="text-red-500">*</span></Label>
-              <div className="relative w-52">
-                <Input
-                  readOnly
-                  value={transactedAt ? `${transactedAt.replace(/-/g, '/')}（${weekdayLabel(transactedAt)}）` : ''}
-                  className="cursor-pointer pr-8"
-                  placeholder="日付を選択"
-                  onClick={() => dateInputRef.current?.showPicker()}
-                />
-                <CalendarDays className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                <input
-                  ref={dateInputRef}
-                  type="date"
-                  value={transactedAt}
-                  onChange={(e) => setTransactedAt(e.target.value)}
-                  className="sr-only"
-                />
-              </div>
+              <Label>日付</Label>
+              <Input
+                readOnly
+                value={transactedAt ? `${transactedAt.replace(/-/g, '/')}（${weekdayLabel(transactedAt)}）` : ''}
+                className="w-52 bg-gray-50 text-gray-500"
+              />
             </div>
             <div className="space-y-1">
               <Label>メモ</Label>
