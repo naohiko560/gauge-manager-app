@@ -25,5 +25,10 @@
   },
   "observability": {
     "enabled": true
+  },
+  "vars": {
+    "NEXT_PUBLIC_ENV": "production",
+    "NEXT_PUBLIC_SUPABASE_URL": "https://fxxavsiffmhdwqmeetwd.supabase.co",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_bqG4dao_6OQuFrIc5-6hDA_03zRsx3U"
   }
 }
